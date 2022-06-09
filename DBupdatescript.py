@@ -59,7 +59,7 @@ class Run:
             ## TODO should raise error that database is
             k = 1
         else:
-            k =2
+            k = 3
         return
 
     def update(self):
