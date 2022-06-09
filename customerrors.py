@@ -9,4 +9,6 @@ class ArgErr (Exception):
         super().__init__(self.__msg)
 
     def __str__(self):
-        return self.__msg
+        return self.__msg + ', proszę użyć "-s" aby zmodyfikować istniejącą bazę' \
+            + ' danych która spełnia wymagania\n "-u" aby zdobyć aktualne kursy' \
+            + ' walut i "-e" aby wyeksportować dane do pliku .csv.'
