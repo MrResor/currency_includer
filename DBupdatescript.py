@@ -1,9 +1,6 @@
-import pymysql
-import sqlalchemy
 import customerrors as ce
-from sqlalchemy.ext.automap import automap_base
-from sqlalchemy.orm import Session
-from sqlalchemy import create_engine
+from DBconnection import dbconn
+from sqlalchemy.exc import OperationalError
 
 class Run:
     """Class responsible for carrying out the script
@@ -16,7 +13,7 @@ class Run:
         setup   -- setups the currency table needed to 
         update  -- updates currencies
         export  -- exports data from database into .csv format
-        help    -- 
+        help    -- help string to inform user of script usage
     """
     def __init__ (self, cmdargs):
         try:
@@ -33,7 +30,7 @@ class Run:
                 self.export()
             else:
                 self.help()
-        except sqlalchemy.exc.OperationalError as err:
+        except OperationalError as err:
             print("Given database does not exist or is unreachable.")
     
     def argschk(self, cmdargs):
@@ -48,18 +45,27 @@ class Run:
             raise ce.ArgErr(msg)
 
     def setup(self):
-        Base = automap_base()
-        try:
-            engine = create_engine("mysql+pymysql://root:root@localhost/wakamakafon")
-        except pymysql.err.OperationalError as err:
-            print(str(err))
-        Base.prepare(engine, reflect=True)
-        session = Session(engine)
-        if not Base.classes.__contains__('product'):
-            ## TODO should raise error that database is
+        db = dbconn()
+        if not db.base.classes.__contains__('product'):
+            ## TODO should raise error that database does not contain the table we need
             k = 1
         else:
-            k = 3
+            if not db.base.classes.__contains__('currency'):
+                from sqlalchemy import Table, Column, DECIMAL, MetaData, String, insert
+                currency = Table(
+                    'currency', MetaData(), 
+                    Column('code', String(3), primary_key = True),
+                    Column('name', String(255)), 
+                    Column('val', DECIMAL),
+                )
+                currency.create(db.session.bind)
+                db.refresh()
+                db.session.execute(insert(dict(db.base.classes)['currency']).values(code = 'PLN', name = 'złoty', val = 1.0))
+                db.session.commit()
+                self.update() # to fill table with some initial values
+            else:
+                db.session.commit()
+                print("Currency table already exists.")
         return
 
     def update(self):
