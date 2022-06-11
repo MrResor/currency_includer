@@ -50,16 +50,14 @@ class Run:
                 print("Baza danych jest niedostępna")
                 logging.error("Baza danych jest niedostępna")
         except ConnectionError as err:
-            print("Próba połączenia nie powiodła się, ponieważ połączona strona \
-nie odpowiedziała poprawnie po ustalonym okresie czasu \nlub utworzone połączenie \
-nie powiodło się, ponieważ połączony host nie odpowiedział.")
+            print('Błąd połączenia z API banku.')
             logging.error("Błąd połączenia z API banku.")
             if (self.s):
                 print('Nie udało się utworzyć tablicy "Currency".')
                 logging.error('Nie udało się utworzyć tablicy "Currency".')
-        except ProgrammingError as err:
-            print('Baza źle skonfigurowana, brakuje tablicy "Currency".')
-            logging.error('Baza źle skonfigurowana, brakuje tablicy "Currency".')
+        except AttributeError as err:
+            print('Baza źle skonfigurowana, brakuje tablicy "' + str(err) + '".')
+            logging.error('Baza źle skonfigurowana, brakuje tablicy "' + str(err) + '".')
     
     def argschk(self, cmdargs):
         if len(cmdargs) != 2:
@@ -106,24 +104,21 @@ nie powiodło się, ponieważ połączony host nie odpowiedział.")
 
     def update(self):
         db = dbconn()
-        if not db.base.classes.__contains__('currency'):
-            raise ProgrammingError("", "", "")
+        USDval, EURval = self.obtain_data()
+        from sqlalchemy import update, select, insert
+        tab = db.base.classes.currency
+        res = db.session.execute(select(tab).where(tab.code == 'EUR')).one_or_none()
+        if res == None:
+            db.session.execute(insert(tab).values(code = 'EUR', name = 'euro', val = EURval))
         else:
-            USDval, EURval = self.obtain_data()
-            from sqlalchemy import update, select, insert
-            tab = db.base.classes.currency
-            res = db.session.execute(select(tab).where(tab.code == 'EUR')).one_or_none()
-            if res == None:
-                db.session.execute(insert(tab).values(code = 'EUR', name = 'euro', val = EURval))
-            else:
-                db.session.execute(update(tab).where(tab.code == 'EUR').values(val = EURval))
-            db.session.commit()
-            res = db.session.execute(select(tab).where(tab.code == 'USD')).one_or_none()
-            if res == None:
-                db.session.execute(insert(tab).values(code = 'USD', name = 'dolar amerykański', val = USDval))
-            else:
-                db.session.execute(update(tab).where(tab.code == 'USD').values(val = USDval))
-            db.session.commit()
+            db.session.execute(update(tab).where(tab.code == 'EUR').values(val = EURval))
+        db.session.commit()
+        res = db.session.execute(select(tab).where(tab.code == 'USD')).one_or_none()
+        if res == None:
+            db.session.execute(insert(tab).values(code = 'USD', name = 'dolar amerykański', val = USDval))
+        else:
+            db.session.execute(update(tab).where(tab.code == 'USD').values(val = USDval))
+        db.session.commit()
         logging.info("Kursy walut zaktualizowane.")
         print("Kursy walut zaktualizowane.")
 
@@ -148,10 +143,30 @@ nie powiodło się, ponieważ połączony host nie odpowiedział.")
         return USDval, EURval
 
     def export(self):
-        return
+        db = dbconn()
+        prod = db.base.classes.product
+        cur = db.base.classes.currency
+        from sqlalchemy import select
+        currencies = db.session.execute(select(cur.code,cur.val)).all()
+        for curr in currencies:
+            if curr[0] == 'EUR':
+                EURval = curr[1]
+            elif curr[0] == 'USD':
+                USDval = curr[1]
+        results = db.session.execute(select(prod)).all()
+        with open('somefile.csv', 'w') as file:
+            file.write('"ProductID","DepartmentID","Category","IDSKU","ProductName",' \
+                + '"Quantity","UnitPrice","UnitPriceUSD","UnitPriceEuro","Ranking",' \
+                + '"ProductDesc","UnitsInStock","UnitsInOrder"\n')
+            for result in results:
+                r = result[0].__dict__
+                file.write('"'+r['ProductID']+'","'+r['DepartmentID']+'","'+r['Category']+'","'\
+                    +r['IDSKU']+'","'+r['ProductName']+'",'+str(r['Quantity'])+','+str(r['UnitPrice'])+','\
+                    +str(r['UnitPrice']/USDval)+','+str(r['UnitPrice']/EURval)+','+str(r['Ranking'])+',"'\
+                    +r['ProductDesc']+'",'+str(r['UnitsInStock'])+','+str(r['UnitsInOrder'])+'\n')
     
     def help(self):
-        print("main.py opcje[-s, -u, -e]\njedna z opcji jest wymagana do działania skryptu\n \
--s\t->\tmodyfikacja istniejącej bazy danych spełniającej wymagania by była w stanie przyjąć nowe waluty.\n \
--u\t->\todświerzenie kursów walut pobranych z API NPB.\n \
--e\t->\teksportowanie danych do pliku .csv.")
+        print('main.py opcje[-s, -u, -e]\njedna z opcji jest wymagana do działania skryptu\n' \
+            + '-s\t->\tmodyfikacja istniejącej bazy danych spełniającej wymagania by była ' \
+            + 'w stanie przyjąć nowe waluty.\n-u\t->\todświerzenie kursów walut pobranych ' \
+            + 'z API NPB.\n-e\t->\teksportowanie danych do pliku .csv.')
