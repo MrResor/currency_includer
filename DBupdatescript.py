@@ -145,6 +145,8 @@ class Run:
             EURval = response.json()['rates'][0]['mid']
         else:
             EURval = response.json()['rates'][0]['mid']
+        print("Dane z NBP otrzymane.")
+        logging.info("Dane z NBP otrzymane.")
         return USDval, EURval
 
     def export(self):
@@ -170,6 +172,8 @@ class Run:
                     +str(round(r['UnitPrice']/USDval,2))+','+str(round(r['UnitPrice']/EURval,2)) \
                     +','+str(r['Ranking'])+',"'+r['ProductDesc']+'",'+str(r['UnitsInStock']) \
                     +','+str(r['UnitsInOrder'])+'\n')
+        print("Dane wyeksportowane.")
+        logging.info("Dane wyeksportowane.")
     
     def help(self):
         print('main.py opcje[-s, -u, -e]\njedna z opcji jest wymagana do działania skryptu\n' \
