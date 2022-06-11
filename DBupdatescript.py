@@ -117,9 +117,9 @@ class Run:
 
     def obtainData(self):
         response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/usd/today/?format=json')
-        if (response.code == 404):
+        if (response.status_code == 404):
             response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/usd/?format=json')
-            if response.code == 404:
+            if response.status_code == 404:
                 raise ConnectionError
             print("usd -> Dzisiejsze dane niedostępne, używamy najświeższych dostępnych danych.")
             logging.warning("usd -> Dzisiejsze dane niedostępne, używamy najświeższych dostępnych danych.")
@@ -127,11 +127,11 @@ class Run:
         else:
             USDval = response.json()['rates'][0]['mid']
         response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/eur/today/?format=json')
-        if (response.code == 404):
+        if (response.status_code == 404):
             response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/eur/?format=json')
-            if response.code == 404:
+            if response.status_code == 404:
                 raise ConnectionError
-            print("eur -> Dzisiejsze dane niedostępne, używamy najśwież szych dostępnych danych.")
+            print("eur -> Dzisiejsze dane niedostępne, używamy najświeższych dostępnych danych.")
             logging.warning("eur -> Dzisiejsze dane niedostępne, używamy najświeższych dostępnych danych.")
             EURval = response.json()['rates'][0]['mid']
         else:
