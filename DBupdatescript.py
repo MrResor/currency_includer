@@ -52,9 +52,11 @@ nie powiodło się, ponieważ połączony host nie odpowiedział.")
                 msg = 'Brakuje argumentu'
             else:
                 msg = 'Za dużo argumentów'
+            logging.error(msg)
             raise ce.ArgErr(msg)
         elif cmdargs[1] not in ["-e", "-u", "-s", "-h", "-help"]:
             msg = 'Nieznany argument'
+            logging.error(msg)
             raise ce.ArgErr(msg)
 
     def setup(self):
@@ -82,11 +84,11 @@ nie powiodło się, ponieważ połączony host nie odpowiedział.")
                 db.session.commit()
             else: 
                 print('Tabela "Currency" już istnieje.')
+                logging.warning('Tabela "Currency" już istnieje.')
         return
 
-    def update(self, db = None):
-        if db == None:
-            db = dbconn()
+    def update(self):
+        db = dbconn()
         if not db.base.classes.__contains__('currency'):
             ## TODO error database not setup correctly
             return 0
@@ -119,13 +121,7 @@ nie powiodło się, ponieważ połączony host nie odpowiedział.")
         return
     
     def help(self):
-        import requests
-        response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/eur/today/?format=json')
-        if (response.content == b'404 NotFound - Not Found - Brak danych'):
-            print("Today's data unavailable, accessing latest data.")
-            response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/eur/?format=json')
-            print(response.json()['rates'][0]['mid'])
-#         print("main.py opcje[-s, -u, -e]\njedna z opcji jest wymagana do działania skryptu\n \
-# -s\t->\tmodyfikacja istniejącej bazy danych spełniającej wymagania by była w stanie przyjąć nowe waluty.\n \
-# -u\t->\todświerzenie kursów walut pobranych z API NPB.\n \
-# -e\t->\teksportowanie danych do pliku .csv.")
+        print("main.py opcje[-s, -u, -e]\njedna z opcji jest wymagana do działania skryptu\n \
+-s\t->\tmodyfikacja istniejącej bazy danych spełniającej wymagania by była w stanie przyjąć nowe waluty.\n \
+-u\t->\todświerzenie kursów walut pobranych z API NPB.\n \
+-e\t->\teksportowanie danych do pliku .csv.")
