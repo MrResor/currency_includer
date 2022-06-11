@@ -8,7 +8,7 @@ class Run:
     """Class responsible for carrying out the script
     
         Methods:
-        main        -- 
+        main        -- responsible for calling funcion to handle mode chosen by parameter and most error handling
         argschk     -- checking correctness of passed arguments
         setup       -- setups the currency table needed to 
         update      -- updates currencies
@@ -160,16 +160,16 @@ class Run:
                 USDval = curr[1]
         results = db.session.execute(select(prod)).all()
         with open('export.csv', 'w') as file:
-            file.write('"ProductID","DepartmentID","Category","IDSKU","ProductName",' \
-                + '"Quantity","UnitPrice","UnitPriceUSD","UnitPriceEuro","Ranking",' \
-                + '"ProductDesc","UnitsInStock","UnitsInOrder"\n')
+            file.write('"ProductID";"DepartmentID";"Category";"IDSKU";"ProductName";' \
+                + '"Quantity";"UnitPrice";"UnitPriceUSD";"UnitPriceEuro";"Ranking";' \
+                + '"ProductDesc";"UnitsInStock";"UnitsInOrder"\n')
             for result in results:
                 r = result[0].__dict__
-                file.write('"'+r['ProductID']+'","'+r['DepartmentID']+'","'+r['Category']+'","'\
-                    +r['IDSKU']+'","'+r['ProductName']+'",'+str(r['Quantity'])+','+str(r['UnitPrice'])+','\
-                    +str(round(r['UnitPrice']/USDval,2))+','+str(round(r['UnitPrice']/EURval,2)) \
-                    +','+str(r['Ranking'])+',"'+r['ProductDesc']+'",'+str(r['UnitsInStock']) \
-                    +','+str(r['UnitsInOrder'])+'\n')
+                file.write('"'+r['ProductID']+'";"'+r['DepartmentID']+'";"'+r['Category']+'";"'\
+                    +r['IDSKU']+'";"'+r['ProductName']+'";'+str(r['Quantity'])+';'+str(r['UnitPrice'])+';'\
+                    +str(round(r['UnitPrice']/USDval,2))+';'+str(round(r['UnitPrice']/EURval,2)) \
+                    +';'+str(r['Ranking'])+';"'+r['ProductDesc']+'";'+str(r['UnitsInStock']) \
+                    +';'+str(r['UnitsInOrder'])+'\n')
         print("Dane wyeksportowane.")
         logging.info("Dane wyeksportowane.")
     
