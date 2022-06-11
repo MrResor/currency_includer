@@ -154,7 +154,7 @@ class Run:
             elif curr[0] == 'USD':
                 USDval = curr[1]
         results = db.session.execute(select(prod)).all()
-        with open('somefile.csv', 'w') as file:
+        with open('export.csv', 'w') as file:
             file.write('"ProductID","DepartmentID","Category","IDSKU","ProductName",' \
                 + '"Quantity","UnitPrice","UnitPriceUSD","UnitPriceEuro","Ranking",' \
                 + '"ProductDesc","UnitsInStock","UnitsInOrder"\n')
