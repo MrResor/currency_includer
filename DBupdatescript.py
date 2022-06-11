@@ -20,7 +20,9 @@ class Run:
     """
     def __init__ (self, cmdargs):
         self.s = False
-        parser = argparse.ArgumentParser()
+        parser = argparse.ArgumentParser(add_help = False)
+        parser.add_argument('-h', '--help', help = """Pokazuje te wiadomość i kończy działanie.""",
+            action = "help")
         parser.add_argument('-s', '--setup',help = """modyfikacja istniejącej bazy danych 
             spełniającej wymagania by była w stanie przyjąć nowe waluty.""",
             action = "store_true")
