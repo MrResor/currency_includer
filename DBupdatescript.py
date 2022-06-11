@@ -1,6 +1,6 @@
 import customerrors as ce
 from DBconnection import dbconn
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, ProgrammingError
 from requests.exceptions import ConnectionError
 import logging
 
@@ -18,6 +18,7 @@ class Run:
         help    -- help string to inform user of script usage
     """
     def __init__ (self, cmdargs):
+        self.s = False
         logging.basicConfig(filename = "logfile.log", level=logging.INFO,\
             format='[%(asctime)s] -> {%(levelname)s} %(message)s')
         try:
@@ -45,6 +46,9 @@ nie powiodło się, ponieważ połączony host nie odpowiedział.")
             if (self.s):
                 print('Nie udało się utworzyć tablicy "Currency".')
                 logging.error('Nie udało się utworzyć tablicy "Currency".')
+        except ProgrammingError as err:
+            print('Baza źle skonfigurowana, brakuje tablicy "Currency".')
+            logging.error('Baza źle skonfigurowana, brakuje tablicy "Currency".')
     
     def argschk(self, cmdargs):
         if len(cmdargs) != 2:
@@ -78,10 +82,11 @@ nie powiodło się, ponieważ połączony host nie odpowiedział.")
                 USDval, EURval = self.obtain_data()
                 currency.create(db.session.bind)
                 db.refresh()
-                db.session.execute(insert(dict(db.base.classes)['currency']).values(code = 'PLN', name = 'złoty', val = 1.0))
-                db.session.execute(insert(dict(db.base.classes)['currency']).values(code = 'USD', name = 'dolar amerykański', val = USDval))
-                db.session.execute(insert(dict(db.base.classes)['currency']).values(code = 'EUR', name = 'euro', val = EURval))
+                db.session.execute(insert(db.base.classes.currency).values(code = 'PLN', name = 'złoty', val = 1.0))
+                db.session.execute(insert(db.base.classes.currency).values(code = 'USD', name = 'dolar amerykański', val = USDval))
+                db.session.execute(insert(db.base.classes.currency).values(code = 'EUR', name = 'euro', val = EURval))
                 db.session.commit()
+                logging.info('Tabela "Currency" stworzona i wypełniona.')
             else: 
                 print('Tabela "Currency" już istnieje.')
                 logging.warning('Tabela "Currency" już istnieje.')
@@ -90,27 +95,40 @@ nie powiodło się, ponieważ połączony host nie odpowiedział.")
     def update(self):
         db = dbconn()
         if not db.base.classes.__contains__('currency'):
-            ## TODO error database not setup correctly
-            return 0
+            raise ProgrammingError("", "", "")
         else:
-            from sqlalchemy import select
-            results = db.session.execute(select(db.base.classes.currency)).all()
-            for result in results:
-                print(result[0].__dict__)
-        return
-    
+            USDval, EURval = self.obtain_data()
+            from sqlalchemy import update, select, insert
+            tab = db.base.classes.currency
+            res = db.session.execute(select(tab).where(tab.code == 'EUR')).one_or_none()
+            if res == None:
+                db.session.execute(insert(tab).values(code = 'EUR', name = 'euro', val = EURval))
+            else:
+                db.session.execute(update(tab).where(tab.code == 'EUR').values(val = EURval))
+            db.session.commit()
+            res = db.session.execute(select(tab).where(tab.code == 'USD')).one_or_none()
+            if res == None:
+                db.session.execute(insert(tab).values(code = 'USD', name = 'dolar amerykański', val = USDval))
+            else:
+                db.session.execute(update(tab).where(tab.code == 'USD').values(val = USDval))
+            db.session.commit()
+        logging.info("Kursy walut zaktualizowane.")
+        print("Kursy walut zaktualizowane.")
+
     def obtain_data(self):
         import requests
         response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/usd/today/?format=json')
         if (response.content == b'404 NotFound - Not Found - Brak danych'):
-            print("usd - > Today's data unavailable, accessing latest available data.")
+            print("usd -> Dzisiejsze dane niedostępne, używamy najświerzszych dostępnych danych.")
+            logging.warning("usd -> Dzisiejsze dane niedostępne, używamy najświerzszych dostępnych danych.")
             response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/usd/?format=json')
             USDval = response.json()['rates'][0]['mid']
         else:
             USDval = response.json()['rates'][0]['mid']
         response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/eur/today/?format=json')
         if (response.content == b'404 NotFound - Not Found - Brak danych'):
-            print("eur - > Today's data unavailable, accessing latest available data.")
+            print("eur -> Dzisiejsze dane niedostępne, używamy najświerzszych dostępnych danych.")
+            logging.warning("eur -> Dzisiejsze dane niedostępne, używamy najświerzszych dostępnych danych.")
             response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/eur/?format=json')
             EURval = response.json()['rates'][0]['mid']
         else:
