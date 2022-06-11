@@ -11,11 +11,12 @@ class Run:
 
         -----
         Methods:
-        argschk -- checking correctness of passed arguments
-        setup   -- setups the currency table needed to 
-        update  -- updates currencies
-        export  -- exports data from database into .csv format
-        help    -- help string to inform user of script usage
+        argschk     -- checking correctness of passed arguments
+        setup       -- setups the currency table needed to 
+        update      -- updates currencies
+        obtain_data -- obtains up to date currencies values from NBP API
+        export      -- exports data from database into .csv format
+        help        -- help string to inform user of script usage
     """
     def __init__ (self, cmdargs):
         self.s = False
@@ -26,6 +27,9 @@ class Run:
         except ce.ArgErr as err:
             print(str(err))
             return
+        self.main(cmdargs)
+    
+    def main(self, cmdargs):
         try:
             if cmdargs[1] == "-s":
                 self.setup()
@@ -36,8 +40,15 @@ class Run:
             else:
                 self.help()
         except OperationalError as err:
-            print("Baza danych jest niedostępna lub nie istnieje.")
-            logging.error("Baza danych jest niedostępna lub nie istnieje.")
+            if "Access denied" in str(err):
+                print("Niepoprawne dane logowania do bazy.")
+                logging.error("Niepoprawne dane logowania do bazy.")
+            if "Unknown database" in str(err):
+                print("Baza danych nie istnieje")
+                logging.error("Baza danych nie istnieje")
+            if "Can't connect" in str(err):
+                print("Baza danych jest niedostępna")
+                logging.error("Baza danych jest niedostępna")
         except ConnectionError as err:
             print("Próba połączenia nie powiodła się, ponieważ połączona strona \
 nie odpowiedziała poprawnie po ustalonym okresie czasu \nlub utworzone połączenie \
@@ -87,7 +98,8 @@ nie powiodło się, ponieważ połączony host nie odpowiedział.")
                 db.session.execute(insert(db.base.classes.currency).values(code = 'EUR', name = 'euro', val = EURval))
                 db.session.commit()
                 logging.info('Tabela "Currency" stworzona i wypełniona.')
-            else: 
+            else:
+                ## TODO check if table has necessary columns
                 print('Tabela "Currency" już istnieje.')
                 logging.warning('Tabela "Currency" już istnieje.')
         return
