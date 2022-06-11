@@ -1,6 +1,6 @@
 Scripts/
 Include/
-.csv
+*.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
