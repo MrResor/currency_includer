@@ -1,8 +1,10 @@
-import customerrors as ce
 from DBconnection import dbconn
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from requests.exceptions import ConnectionError
+from sqlalchemy import Table, Column, DECIMAL, MetaData, String, insert, update, select
+import customerrors as ce
 import logging
+import requests
 
 class Run:
     """Class responsible for carrying out the script
@@ -78,7 +80,6 @@ class Run:
             raise AttributeError('product')
         else:
             if not db.base.classes.__contains__('currency'):
-                from sqlalchemy import Table, Column, DECIMAL, MetaData, String, insert
                 currency = Table(
                     'currency', MetaData(), 
                     Column('code', String(3), primary_key = True),
@@ -108,7 +109,6 @@ class Run:
     def update(self):
         db = dbconn()
         USDval, EURval = self.obtain_data()
-        from sqlalchemy import update, select, insert
         tab = db.base.classes.currency
         res = db.session.execute(select(tab).where(tab.code == 'EUR')).one_or_none()
         if res == None:
@@ -126,7 +126,6 @@ class Run:
         print("Kursy walut zaktualizowane.")
 
     def obtain_data(self):
-        import requests
         response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/usd/today/?format=json')
         if (response.content == b'404 NotFound - Not Found - Brak danych'):
             print("usd -> Dzisiejsze dane niedostępne, używamy najświerzszych dostępnych danych.")
@@ -151,7 +150,6 @@ class Run:
         db = dbconn()
         prod = db.base.classes.product
         cur = db.base.classes.currency
-        from sqlalchemy import select
         currencies = db.session.execute(select(cur.code,cur.val)).all()
         for curr in currencies:
             if curr[0] == 'EUR':
