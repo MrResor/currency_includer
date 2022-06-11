@@ -2,9 +2,9 @@ from DBconnection import dbconn
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from requests.exceptions import ConnectionError
 from sqlalchemy import Table, Column, DECIMAL, MetaData, String, insert, update, select
-import customerrors as ce
 import logging
 import requests
+import argparse
 
 class Run:
     """Class responsible for carrying out the script
@@ -20,25 +20,27 @@ class Run:
     """
     def __init__ (self, cmdargs):
         self.s = False
+        parser = argparse.ArgumentParser()
+        parser.add_argument('-s', '--setup',help = """modyfikacja istniejącej bazy danych 
+            spełniającej wymagania by była w stanie przyjąć nowe waluty.""",
+            action = "store_true")
+        parser.add_argument('-u', '--update', help="""odświerzenie kursów walut pobranych z API NPB.""",
+            action = "store_true")
+        parser.add_argument('-e', '--export', help="""eksportowanie danych do pliku .csv.""",
+            action = "store_true")
+        args = parser.parse_args()
         logging.basicConfig(filename = "logfile.log", level=logging.INFO,\
             format='[%(asctime)s] -> {%(levelname)s} %(message)s')
-        try:
-            self.argschk(cmdargs)
-        except ce.ArgErr as err:
-            print(str(err))
-            return
-        self.main(cmdargs)
+        self.main(args)
     
-    def main(self, cmdargs):
+    def main(self, args):
         try:
-            if cmdargs[1] == "-s":
+            if args.setup:
                 self.setup()
-            elif cmdargs[1] == "-u":
+            if args.update:
                 self.update()
-            elif cmdargs[1] == "-e":
+            if args.export:
                 self.export()
-            else:
-                self.help()
         except OperationalError as err:
             if "Access denied" in str(err):
                 print("Niepoprawne dane logowania do bazy.")
@@ -58,19 +60,6 @@ class Run:
         except AttributeError as err:
             print('Baza źle skonfigurowana, brakuje tablicy "' + str(err) + '".')
             logging.error('Baza źle skonfigurowana, brakuje tablicy "' + str(err) + '".')
-    
-    def argschk(self, cmdargs):
-        if len(cmdargs) != 2:
-            if len(cmdargs) < 2:
-                msg = 'Brakuje argumentu'
-            else:
-                msg = 'Za dużo argumentów'
-            logging.error(msg)
-            raise ce.ArgErr(msg)
-        elif cmdargs[1] not in ["-e", "-u", "-s", "-h", "-help"]:
-            msg = 'Nieznany argument'
-            logging.error(msg)
-            raise ce.ArgErr(msg)
 
     def setup(self):
         self.s = True
@@ -86,7 +75,7 @@ class Run:
                     Column('name', String(255)), 
                     Column('val', DECIMAL(10,2)),
                 )
-                USDval, EURval = self.obtain_data()
+                USDval, EURval = self.obtainData()
                 currency.create(db.session.bind)
                 db.refresh()
                 db.session.execute(insert(db.base.classes.currency).values(code = 'PLN', name = 'złoty', val = 1.0))
@@ -103,12 +92,11 @@ class Run:
                 else:
                     print('Tabela "Currency" już istnieje, ale jest niepoprawna.')
                     logging.error('Tabela "Currency" już istnieje, ale jest niepoprawna.')
-
         return
 
     def update(self):
         db = dbconn()
-        USDval, EURval = self.obtain_data()
+        USDval, EURval = self.obtainData()
         tab = db.base.classes.currency
         res = db.session.execute(select(tab).where(tab.code == 'EUR')).one_or_none()
         if res == None:
@@ -125,19 +113,20 @@ class Run:
         logging.info("Kursy walut zaktualizowane.")
         print("Kursy walut zaktualizowane.")
 
-    def obtain_data(self):
+    def obtainData(self):
         response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/usd/today/?format=json')
+        print(response.status_code)
         if (response.content == b'404 NotFound - Not Found - Brak danych'):
-            print("usd -> Dzisiejsze dane niedostępne, używamy najświerzszych dostępnych danych.")
-            logging.warning("usd -> Dzisiejsze dane niedostępne, używamy najświerzszych dostępnych danych.")
+            print("usd -> Dzisiejsze dane niedostępne, używamy najświeższych dostępnych danych.")
+            logging.warning("usd -> Dzisiejsze dane niedostępne, używamy najświeższych dostępnych danych.")
             response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/usd/?format=json')
             USDval = response.json()['rates'][0]['mid']
         else:
             USDval = response.json()['rates'][0]['mid']
         response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/eur/today/?format=json')
         if (response.content == b'404 NotFound - Not Found - Brak danych'):
-            print("eur -> Dzisiejsze dane niedostępne, używamy najświerzszych dostępnych danych.")
-            logging.warning("eur -> Dzisiejsze dane niedostępne, używamy najświerzszych dostępnych danych.")
+            print("eur -> Dzisiejsze dane niedostępne, używamy najśwież szych dostępnych danych.")
+            logging.warning("eur -> Dzisiejsze dane niedostępne, używamy najświeższych dostępnych danych.")
             response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/eur/?format=json')
             EURval = response.json()['rates'][0]['mid']
         else:
@@ -150,29 +139,19 @@ class Run:
         db = dbconn()
         prod = db.base.classes.product
         cur = db.base.classes.currency
-        currencies = db.session.execute(select(cur.code,cur.val)).all()
-        for curr in currencies:
-            if curr[0] == 'EUR':
-                EURval = curr[1]
-            elif curr[0] == 'USD':
-                USDval = curr[1]
+        curr = dict(db.session.execute(select(cur.code,cur.val)).all())
         results = db.session.execute(select(prod)).all()
         with open('export.csv', 'w') as file:
-            file.write('"ProductID";"DepartmentID";"Category";"IDSKU";"ProductName";' \
-                + '"Quantity";"UnitPrice";"UnitPriceUSD";"UnitPriceEuro";"Ranking";' \
-                + '"ProductDesc";"UnitsInStock";"UnitsInOrder"\n')
+            file.write(f'"ProductID";"DepartmentID";"Category";"IDSKU";"ProductName";' \
+                + f'"Quantity";"UnitPrice";"UnitPriceUSD";"UnitPriceEuro";"Ranking";' \
+                + f'"ProductDesc";"UnitsInStock";"UnitsInOrder"\n')
             for result in results:
                 r = result[0].__dict__
-                file.write('"'+r['ProductID']+'";"'+r['DepartmentID']+'";"'+r['Category']+'";"'\
-                    +r['IDSKU']+'";"'+r['ProductName']+'";'+str(r['Quantity'])+';'+str(r['UnitPrice'])+';'\
-                    +str(round(r['UnitPrice']/USDval,2))+';'+str(round(r['UnitPrice']/EURval,2)) \
-                    +';'+str(r['Ranking'])+';"'+r['ProductDesc']+'";'+str(r['UnitsInStock']) \
-                    +';'+str(r['UnitsInOrder'])+'\n')
+                print(r)
+                file.write(f'"{r["ProductID"]}";"{r["DepartmentID"]}";"{r["Category"]}";"'\
+                    + f'{r["IDSKU"]}";"{r["ProductName"]}";{str(r["Quantity"])};{str(r["UnitPrice"])};'\
+                    + f'{str(round(r["UnitPrice"]/curr["USD"],2))};{str(round(r["UnitPrice"]/curr["EUR"],2))}'\
+                    + f'{str(r["Ranking"])};"{r["ProductDesc"]}";{str(r["UnitsInStock"])}'\
+                    + f';{str(r["UnitsInOrder"])}\n')
         print("Dane wyeksportowane.")
         logging.info("Dane wyeksportowane.")
-    
-    def help(self):
-        print('main.py opcje[-s, -u, -e]\njedna z opcji jest wymagana do działania skryptu\n' \
-            + '-s\t->\tmodyfikacja istniejącej bazy danych spełniającej wymagania by była ' \
-            + 'w stanie przyjąć nowe waluty.\n-u\t->\todświerzenie kursów walut pobranych ' \
-            + 'z API NPB.\n-e\t->\teksportowanie danych do pliku .csv.')
