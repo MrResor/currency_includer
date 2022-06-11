@@ -7,10 +7,8 @@ import logging
 class Run:
     """Class responsible for carrying out the script
     
-        Atributes:
-
-        -----
         Methods:
+        main        -- 
         argschk     -- checking correctness of passed arguments
         setup       -- setups the currency table needed to 
         update      -- updates currencies
