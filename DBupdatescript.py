@@ -167,8 +167,9 @@ class Run:
                 r = result[0].__dict__
                 file.write('"'+r['ProductID']+'","'+r['DepartmentID']+'","'+r['Category']+'","'\
                     +r['IDSKU']+'","'+r['ProductName']+'",'+str(r['Quantity'])+','+str(r['UnitPrice'])+','\
-                    +str(r['UnitPrice']/USDval)+','+str(r['UnitPrice']/EURval)+','+str(r['Ranking'])+',"'\
-                    +r['ProductDesc']+'",'+str(r['UnitsInStock'])+','+str(r['UnitsInOrder'])+'\n')
+                    +str(round(r['UnitPrice']/USDval,2))+','+str(round(r['UnitPrice']/EURval,2)) \
+                    +','+str(r['Ranking'])+',"'+r['ProductDesc']+'",'+str(r['UnitsInStock']) \
+                    +','+str(r['UnitsInOrder'])+'\n')
     
     def help(self):
         print('main.py opcje[-s, -u, -e]\njedna z opcji jest wymagana do działania skryptu\n' \
