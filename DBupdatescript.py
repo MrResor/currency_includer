@@ -77,8 +77,7 @@ class Run:
         db = dbconn()
         logging.info("Połączono z bazą danych.")
         if not db.base.classes.__contains__('product'):
-            ## TODO should raise error that database does not contain the table we need
-            k = 1
+            raise AttributeError('product')
         else:
             if not db.base.classes.__contains__('currency'):
                 from sqlalchemy import Table, Column, DECIMAL, MetaData, String, insert
@@ -97,9 +96,15 @@ class Run:
                 db.session.commit()
                 logging.info('Tabela "Currency" stworzona i wypełniona.')
             else:
-                ## TODO check if table has necessary columns
-                print('Tabela "Currency" już istnieje.')
-                logging.warning('Tabela "Currency" już istnieje.')
+                res = db.base.classes.currency.__table__.columns.keys()
+                res.sort()
+                if res == ['code', 'name', 'val']:
+                    print('Tabela "Currency" już istnieje.')
+                    logging.warning('Tabela "Currency" już istnieje.')
+                else:
+                    print('Tabela "Currency" już istnieje, ale jest niepoprawna.')
+                    logging.error('Tabela "Currency" już istnieje, ale jest niepoprawna.')
+
         return
 
     def update(self):
