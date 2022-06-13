@@ -8,16 +8,19 @@ import argparse
 
 class Run:
     """Class responsible for carrying out the script
-    
+
+        Atributes:
+        BASE        -- holds base api link used while retriving exchange rates.
+
         Methods:
         main        -- responsible for calling funcion to handle mode chosen by parameter and most error handling
-        argschk     -- checking correctness of passed arguments
         setup       -- setups the currency table needed to 
         update      -- updates currencies
-        obtain_data -- obtains up to date currencies values from NBP API
+        obtainData  -- obtains up to date currencies values from NBP API
         export      -- exports data from database into .csv format
-        help        -- help string to inform user of script usage
     """
+    BASE = 'https://api.nbp.pl/api/exchangerates/rates/a/'
+
     def __init__ (self, cmdargs):
         self.s = False
         parser = argparse.ArgumentParser(add_help = False)
@@ -116,9 +119,9 @@ class Run:
         print("Kursy walut zaktualizowane.")
 
     def obtainData(self):
-        response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/usd/today/?format=json')
+        response = requests.get(self.BASE + 'usd/today/?format=json')
         if (response.status_code == 404):
-            response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/usd/?format=json')
+            response = requests.get(self.BASE + 'usd/?format=json')
             if response.status_code == 404:
                 raise ConnectionError
             print("usd -> Dzisiejsze dane niedostępne, używamy najświeższych dostępnych danych.")
@@ -126,9 +129,9 @@ class Run:
             USDval = response.json()['rates'][0]['mid']
         else:
             USDval = response.json()['rates'][0]['mid']
-        response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/eur/today/?format=json')
+        response = requests.get(self.BASE + 'eur/today/?format=json')
         if (response.status_code == 404):
-            response = requests.get('https://api.nbp.pl/api/exchangerates/rates/a/eur/?format=json')
+            response = requests.get(self.BASE + 'eur/?format=json')
             if response.status_code == 404:
                 raise ConnectionError
             print("eur -> Dzisiejsze dane niedostępne, używamy najświeższych dostępnych danych.")
