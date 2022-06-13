@@ -4,10 +4,6 @@ Wersje w innych językach:
 
 ## Sposób użycia
 Program może być uruchomiony z konsoli przy użyciu 'python main.py', z 4 różnymi argumentami:</br>
--h  wyświetla tekst pomocniczy,</br>
--s  przygotowuje baze danych przez dodanie tabeli "currency" która jest niezbędna do poprawnego działania skryptu,</br>
--u  aktualizuje kursy walut w tabeli "currency",</br>
--e  eksportuje dane do pliku .csv</br>
 
 ### -h "help"
 Wypisuje prosty teskt pomocniczy o skrypcie.
@@ -20,3 +16,6 @@ Aktualizuje tabele "currency" kursami walut otrzymanymi z API NBP. Jeżeli API n
 
 ### -e "export"
 Eksportuje dane do pliku .csv, aby były łatwe do przejrzenia w excelu. W wypadku jakiegokolwiek błedu process zostaje przerwany, a efekt zapisany w logu.
+
+## Notatka
+Zaktualizowany schemat bazy danych można znaleźć <a href = "https://github.com/MrResor/Hawatel_rekrutacja/blob/main/dbschema.txt">tutaj</a>. Jest to ten sam schemat który został dostarczony jako model bazy dancyh klienta z tabelą stworzoną przy użyciu opcji "-s" skryptu. Warto jednak dodać że dostarzona nam baza dancyh nie przechowuje poprawnie cen, gdyż ignoruje wszystkie wartości po przecinku(decimal(10,0) powinno zostać zamieniona na decimal(10,2)). Dodatkowo, przy użyciu danych dostarczonych do zapełnienia tabeli, nie dało się wstawić rekordów to tabeli "sellers". Było to spowodowane regułą która wymagała litery 'B' na 3ciej kolumnie, a wszystkie dane miałt tam litere 'S'.
