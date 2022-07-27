@@ -1,3 +1,4 @@
+from decorators import db_errors
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
@@ -18,6 +19,11 @@ class dbconn:
     CONN_STR = "mysql+pymysql://root:root@localhost/mydb"
 
     def __init__(self):
+        self.session = None
+        self.setup()
+
+    @db_errors
+    def setup(self) -> None:
         self.engine = create_engine(self.CONN_STR)
         self.base = automap_base()
         self.base.prepare(self.engine, reflect=True)
@@ -31,3 +37,8 @@ class dbconn:
         self.base = automap_base()
         self.base.prepare(self.engine, reflect=True)
         self.session = Session(self.engine)
+
+    def __del__(self):
+        if self.session:
+            self.session.close()
+        self.engine.dispose()

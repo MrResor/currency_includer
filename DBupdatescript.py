@@ -1,5 +1,4 @@
 from DBconnection import dbconn
-from sqlalchemy.exc import OperationalError
 from requests.exceptions import ConnectionError
 from sqlalchemy import (Table, Column, DECIMAL, MetaData,
                         String, insert, update, select)
@@ -48,6 +47,7 @@ class Run:
     def main(self, args):
         """ Main part of the program activating the chosen utilities.
         """
+        self.db = dbconn()
         try:
             if args.setup:
                 self.setup()
@@ -55,16 +55,6 @@ class Run:
                 self.update()
             if args.export:
                 self.export()
-        except OperationalError as err:
-            if "Access denied" in str(err):
-                print("Niepoprawne dane logowania do bazy.")
-                logging.error("Niepoprawne dane logowania do bazy.")
-            elif "Unknown database" in str(err):
-                print("Baza danych nie istnieje")
-                logging.error("Baza danych nie istnieje")
-            elif "Can't connect" in str(err):
-                print("Baza danych jest niedostępna")
-                logging.error("Baza danych jest niedostępna")
         except ConnectionError:
             print('Błąd połączenia z API banku.')
             logging.error("Błąd połączenia z API banku.")
@@ -118,27 +108,26 @@ class Run:
         return
 
     def update(self):
-        db = dbconn()
         USDval, EURval = self.obtainData()
-        tab = db.base.classes.currency
-        res = db.session.execute(select(tab).where(tab.code == 'EUR')).\
+        tab = self.db.base.classes.currency
+        res = self.db.session.execute(select(tab).where(tab.code == 'EUR')).\
             one_or_none()
         if res is None:
-            db.session.execute(insert(tab).values(code='EUR', name='euro',
+            self.db.session.execute(insert(tab).values(code='EUR', name='euro',
                                                   val=EURval))
         else:
-            db.session.execute(update(tab).where(tab.code == 'EUR').
+            self.db.session.execute(update(tab).where(tab.code == 'EUR').
                                values(val=EURval))
-        db.session.commit()
-        res = db.session.execute(select(tab).where(tab.code == 'USD')).\
+        self.db.session.commit()
+        res = self.db.session.execute(select(tab).where(tab.code == 'USD')).\
             one_or_none()
         if res is None:
-            db.session.execute(insert(tab).values(code='USD',
-                               name='dolar amerykański', val=USDval))
+            self.db.session.execute(insert(tab).values(code='USD',
+                            name='dolar amerykański', val=USDval))
         else:
-            db.session.execute(update(tab).where(tab.code == 'USD').
+            self.db.session.execute(update(tab).where(tab.code == 'USD').
                                values(val=USDval))
-        db.session.commit()
+        self.db.session.commit()
         logging.info("Kursy walut zaktualizowane.")
         print("Kursy walut zaktualizowane.")
 
@@ -172,11 +161,10 @@ class Run:
         return USDval, EURval
 
     def export(self):
-        db = dbconn()
-        prod = db.base.classes.product
-        cur = db.base.classes.currency
-        curr = dict(db.session.execute(select(cur.code, cur.val)).all())
-        results = db.session.execute(select(prod)).all()
+        prod = self.db.base.classes.product
+        cur = self.db.base.classes.currency
+        curr = dict(self.db.session.execute(select(cur.code, cur.val)).all())
+        results = self.db.session.execute(select(prod)).all()
         with open('export.csv', 'w') as file:
             file.write('"ProductID";"DepartmentID";"Category";"IDSKU";'
                        '"ProductName";"Quantity";"UnitPrice";"UnitPriceUSD";'
