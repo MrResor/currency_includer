@@ -1,5 +1,5 @@
 from DBconnection import dbconn
-from requests.exceptions import ConnectionError
+from decorators import api_errors, missing_table_errors
 from sqlalchemy import (Table, Column, DECIMAL, MetaData,
                         String, insert, update, select)
 import logging
@@ -44,27 +44,17 @@ class Run:
                             + ' %(message)s')
         self.main(args)
 
+    @missing_table_errors
     def main(self, args):
         """ Main part of the program activating the chosen utilities.
         """
         self.db = dbconn()
-        try:
-            if args.setup:
-                self.setup()
-            if args.update:
-                self.update()
-            if args.export:
-                self.export()
-        except ConnectionError:
-            print('Błąd połączenia z API banku.')
-            logging.error("Błąd połączenia z API banku.")
-            if (self.s):
-                print('Nie udało się utworzyć tablicy "Currency".')
-                logging.error('Nie udało się utworzyć tablicy "Currency".')
-        except AttributeError as err:
-            print(f'Baza źle skonfigurowana, brakuje tablicy "{str(err)}".')
-            logging.error(f'Baza źle skonfigurowana, brakuje tablicy\
-                "{str(err)}".')
+        if args.setup:
+            self.setup()
+        if args.update:
+            self.update()
+        if args.export:
+            self.export()
 
     def setup(self):
         """ Creates and fills the table with initial values if the
@@ -83,7 +73,7 @@ class Run:
                     Column('name', String(255)),
                     Column('val', DECIMAL(10, 2)),
                 )
-                USDval, EURval = self.obtainData()
+                USDval, EURval = self.obtainData(True)
                 currency.create(db.session.bind)
                 db.refresh()
                 db.session.execute(insert(db.base.classes.currency).values(
@@ -108,30 +98,31 @@ class Run:
         return
 
     def update(self):
-        USDval, EURval = self.obtainData()
+        USDval, EURval = self.obtainData(False)
         tab = self.db.base.classes.currency
         res = self.db.session.execute(select(tab).where(tab.code == 'EUR')).\
             one_or_none()
         if res is None:
             self.db.session.execute(insert(tab).values(code='EUR', name='euro',
-                                                  val=EURval))
+                                                       val=EURval))
         else:
             self.db.session.execute(update(tab).where(tab.code == 'EUR').
-                               values(val=EURval))
+                                    values(val=EURval))
         self.db.session.commit()
         res = self.db.session.execute(select(tab).where(tab.code == 'USD')).\
             one_or_none()
         if res is None:
             self.db.session.execute(insert(tab).values(code='USD',
-                            name='dolar amerykański', val=USDval))
+                                    name='dolar amerykański', val=USDval))
         else:
             self.db.session.execute(update(tab).where(tab.code == 'USD').
-                               values(val=USDval))
+                                    values(val=USDval))
         self.db.session.commit()
         logging.info("Kursy walut zaktualizowane.")
         print("Kursy walut zaktualizowane.")
 
-    def obtainData(self):
+    @api_errors
+    def obtainData(self, flag):
         response = requests.get(self.BASE + 'usd/today/?format=json')
         if (response.status_code == 404):
             response = requests.get(self.BASE + 'usd/?format=json')
@@ -162,8 +153,9 @@ class Run:
 
     def export(self):
         prod = self.db.base.classes.product
-        cur = self.db.base.classes.currency
-        curr = dict(self.db.session.execute(select(cur.code, cur.val)).all())
+        cursor = self.db.base.classes.currency
+        curr = dict(self.db.session.execute(select(cursor.code, cursor.val)).
+                    all())
         results = self.db.session.execute(select(prod)).all()
         with open('export.csv', 'w') as file:
             file.write('"ProductID";"DepartmentID";"Category";"IDSKU";'

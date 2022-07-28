@@ -1,5 +1,6 @@
 from __init__ import logging
 from sqlalchemy.exc import OperationalError
+from requests.exceptions import ConnectionError
 
 
 def db_errors(func):
@@ -7,7 +8,7 @@ def db_errors(func):
         print(error)
         logging.error(error)
 
-    def wrapper_catch_errors(instance):
+    def wrapper_catch_db_errors(instance):
         try:
             func(instance)
         except OperationalError as err:
@@ -17,4 +18,34 @@ def db_errors(func):
             note(call[err.args[0].split("(")[2].split(",")[0]])
             note("Program zakończony z kodem 2.")
             quit(2)
-    return wrapper_catch_errors
+    return wrapper_catch_db_errors
+
+
+def api_errors(func):
+    def wrapper_catch_api_errors(instance, flag):
+        try:
+            return func(instance, flag)
+        except ConnectionError:
+            print('Błąd połączenia z API banku.')
+            logging.error("Błąd połączenia z API banku.")
+            if flag:
+                print('Nie udało się utworzyć tablicy "Currency".')
+                logging.error('Nie udało się utworzyć tablicy "Currency".')
+            print('Program zakończony z kodem 3.')
+            logging.error('Program zakończony z kodem 3.')
+            quit(3)
+    return wrapper_catch_api_errors
+
+
+def missing_table_errors(func):
+    def wrapper_catch_missing_table_errors(instance, args):
+        try:
+            func(instance, args)
+        except AttributeError as err:
+            print(f'Baza źle skonfigurowana, brakuje tablicy "{str(err)}".')
+            logging.error(f'Baza źle skonfigurowana, brakuje tablicy\
+                "{str(err)}".')
+            print('Program zakończony z kodem 4.')
+            logging.error('Program zakończony z kodem 4.')
+            quit(4)
+    return wrapper_catch_missing_table_errors

@@ -16,7 +16,7 @@ class dbconn:
         Methods:\n
         refresh -- refreshes automaping of the database
     """
-    CONN_STR = "mysql+pymysql://root:root@localhost/mydb"
+    CONN_STR = "mysql+pymysql://root:root@localhost/mytest"
 
     def __init__(self):
         self.session = None
