@@ -1,4 +1,4 @@
-from DBconnection import dbconn
+from db_connection import dbconn
 from decorators import api_errors, missing_table_errors
 from sqlalchemy import (Table, Column, DECIMAL, MetaData,
                         String, insert, update, select)
