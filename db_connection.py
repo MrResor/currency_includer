@@ -2,6 +2,7 @@ from decorators import db_errors
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import Session
 from sqlalchemy import create_engine
+from __init__ import logging
 
 
 class dbconn:
@@ -31,6 +32,7 @@ class dbconn:
         self.base = automap_base()
         self.base.prepare(self.engine, reflect=True)
         self.session = Session(self.engine)
+        logging.info('Połączono z bazą danych.')
 
     def refresh(self) -> None:
         """ Responsible for refreshing the map of the database, after the

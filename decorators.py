@@ -51,10 +51,35 @@ def missing_table_errors(func):
         try:
             func(instance, args)
         except AttributeError as err:
+            print(err)
             print(f'Baza źle skonfigurowana, brakuje tablicy "{str(err)}".')
-            logging.error(f'Baza źle skonfigurowana, brakuje tablicy'
+            logging.error(f'Baza źle skonfigurowana, brakuje tablicy '
                           f'"{str(err)}".')
             print('Program zakończony z kodem 4.')
             logging.error('Program zakończony z kodem 4.')
             quit(4)
     return wrapper_catch_missing_table_errors
+
+
+def table_creation_errors(func):
+    """ Decorator catching error when attempting to create currency table.\n
+        If said table already exists it check if it is the same we need.
+    """
+    def wrapper_catch_table_creation_errors(instance):
+        try:
+            func(instance)
+        except OperationalError as err:
+            err = instance.db.base.classes.currency.__table__.columns.keys()
+            err.sort()
+            if err == ['code', 'name', 'val']:
+                print('Tabela "currency" już istnieje.')
+                logging.warning('Tabela "currency" już istnieje.')
+            else:
+                print('Tabela "currency" już istnieje, ale jest '
+                      'niepoprawna.')
+                logging.error('Tabela "currency" już istnieje, ale jest '
+                              'niepoprawna.')
+                print('Program zakończony z kodem 4.')
+                logging.error('Program zakończony z kodem 4.')
+                quit(4)
+    return wrapper_catch_table_creation_errors

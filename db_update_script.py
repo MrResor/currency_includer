@@ -1,5 +1,5 @@
 from db_connection import dbconn
-from decorators import api_errors, missing_table_errors
+from decorators import api_errors, missing_table_errors, table_creation_errors
 from sqlalchemy import (Table, Column, DECIMAL, MetaData,
                         String, insert, update, select)
 import logging
@@ -56,49 +56,33 @@ class Run:
             self.update()
         if args.export:
             self.export()
+        print('Program zakończony z kodem 0.')
+        logging.error('Program zakończony z kodem 0.')
+        quit(0)
 
+    @table_creation_errors
     def setup(self) -> None:
         """ Creates and fills the table with initial values if the
             conditions are fulfilled.\n
             The main condition is existance of "product" table, and
             lack of already existing "currency" table.
         """
-        logging.info('Połączono z bazą danych.')
         if not self.db.base.classes.__contains__('product'):
             raise AttributeError('product')
-        else:
-            if not self.db.base.classes.__contains__('currency'):
-                currency = Table(
-                    'currency', MetaData(),
-                    Column('code', String(3), primary_key=True),
-                    Column('name', String(255)),
-                    Column('val', DECIMAL(10, 2)),
-                )
-                usd_val, eur_val = self.obtain_data(True)
-                currency.create(self.db.session.bind)
-                self.db.refresh()
-                self.db.session.execute(insert(self.db.base.classes.currency).
-                                        values(code='PLN', name='złoty',
-                                        val=1.0))
-                self.db.session.execute(insert(self.db.base.classes.currency).
-                                        values(code='USD',
-                                        name='dolar amerykański', val=usd_val))
-                self.db.session.execute(insert(self.db.base.classes.currency).
-                                        values(code='EUR', name='euro',
-                                        val=eur_val))
-                self.db.session.commit()
-                logging.info('Tabela "currency" stworzona i wypełniona.')
-            else:
-                res = self.db.base.classes.currency.__table__.columns.keys()
-                res.sort()
-                if res == ['code', 'name', 'val']:
-                    print('Tabela "currency" już istnieje.')
-                    logging.warning('Tabela "currency" już istnieje.')
-                else:
-                    print('Tabela "currency" już istnieje, ale jest '
-                          'niepoprawna.')
-                    logging.error('Tabela "currency" już istnieje, ale jest '
-                                  'niepoprawna.')
+        currency = Table(
+            'currency', MetaData(),
+            Column('code', String(3), primary_key=True),
+            Column('name', String(255)),
+            Column('val', DECIMAL(10, 2)),
+        )
+        currency.create(self.db.session.bind)
+        self.db.refresh()
+        self.db.session.execute(insert(self.db.base.classes.currency).
+                                values(code='PLN', name='złoty',
+                                val=1.0))
+        self.db.session.commit()
+        self.update()
+        logging.info('Tabela "currency" stworzona i wypełniona.')
 
     def update(self) -> None:
         """ Method for updating currency rates using NBP API.
