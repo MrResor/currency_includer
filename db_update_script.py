@@ -116,6 +116,8 @@ class Run:
             Takes bool as parameter to notify from which method was this one
             called and returns tuple of floats (rates for USD and EUR).
         """
+
+        # TODO this probably needs to be optimised, tests with 404 api needed
         response = requests.get(self.Base + 'usd/today/?format=json')
         if (response.status_code == 404):
             response = requests.get(self.Base + 'usd/?format=json')
@@ -153,6 +155,8 @@ class Run:
         curr = dict(self.db.session.execute(select(cur_tab.code, cur_tab.val)).
                     all())
         results = self.db.session.execute(select(prod)).all()
+        # TODO look into write to .csv possibilites in python, maybe there is
+        # cleaner solution
         with open('export.csv', 'w') as file:
             file.write('"ProductID";"DepartmentID";"Category";"IDSKU";'
                        '"ProductName";"Quantity";"UnitPrice";"UnitPriceUSD";'
