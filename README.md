@@ -12,7 +12,7 @@ Program can be run from console with 'python main.py', and can take  4 different
 Outputs simple help string about the script.
 
 ### -s, --setup
-Makes sure that the database has table "product" which is vital for correct operation of the script. Then if it exists, script attempts to create a "currency" table. In case this table is already present in the database a check is performed to see if it is correct one. When it is, user is informed that table is already created. Otherwise, an error message appears. After successfull creation of the table a get request to NBP API is made to get exchange rates for USD and EUR to fill them into the table. if no "product" table is found, user is notified.
+Makes sure that the database has table "product" which is vital for correct operation of the script. Then if it exists, script attempts to create a "currency" table. In case this table is already present in the database a check is performed to see if it is correct one. When it is, user is informed that table is already created. Otherwise, an error message appears. After successfull creation of the table a GET request to NBP API is made to get exchange rates for USD and EUR to fill them into the table. If no "product" table is found, user is notified with error message.
 
 ### -u, --update
 Updates the "currency" table with the values obtained from NBP API. If the  API does not have value from today, the second call is made to obtain the latest exchange rate. Such case is noted in logs. Then script attempts to update the data, but in case of error it will fail. Both successful and failed attempts are logged correspondingly.
@@ -22,7 +22,7 @@ Exports data into .csv format, so it can be easily seen in excel. In case of any
 
 ## Exit codes
 &nbsp;&nbsp;&nbsp;0 - Program executed correctly.  
-&nbsp;&nbsp;&nbsp;2 - Database connection error (wrong password, wrong database, database unresponsive).  
+&nbsp;&nbsp;&nbsp;2 - Database connection error (incorrect credentials, nonexisting database, database unresponsive).  
 &nbsp;&nbsp;&nbsp;3 - API connection error.  
 &nbsp;&nbsp;&nbsp;4 - Database tables incorrect (table "product" missing, table "currency" missing, table "currency" present but incorrect.)  
 In case of any above errors, refer to loggfile created in script's directory.
