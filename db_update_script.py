@@ -11,17 +11,21 @@ class Run:
     """ Class responsible for carrying out the script\n
 
         Atributes:\n
-        Base        -- Holds base api link used while retriving exchange
-        rates.\n
+        Base                -- Holds base api link used while retriving
+        exchange rates.\n
 
         Methods:\n
-        main        -- Responsible for calling funcion to handle modes chosen
-        by parameters.\n
-        setup       -- Setups the currency table needed for script's correct
-        functioning.\n
-        update      -- Updates currencies.\n
-        obtain_data -- Obtains up to date currencies values from NBP API.\n
-        export      -- Exports data from database into .csv format.\n
+        main                -- Responsible for calling funcion to handle modes
+        chosen by parameters.\n
+        setup               -- Setups the currency table needed for script's
+        correct functioning.\n
+        update              -- Updates currencies.\n
+        update_rate         -- Updates singular currency, part of update.\n
+        obtain_data         -- Obtains up to date currencies values from NBP
+        API.\n
+        get_currency_rate   -- Gets singular currency rate, part of
+        obtain_data.\n
+        export              -- Exports data from database into .csv format.\n
     """
     Base = 'https://api.nbp.pl/api/exchangerates/rates/a/'
 
@@ -87,64 +91,60 @@ class Run:
     def update(self) -> None:
         """ Method for updating currency rates using NBP API.
         """
-        USDval, EURval = self.obtain_data(False)
-        tab = self.db.base.classes.currency
-        res = self.db.session.execute(select(tab).where(tab.code == 'EUR')).\
-            one_or_none()
-        if res is None:
-            self.db.session.execute(insert(tab).values(code='EUR', name='euro',
-                                                       val=EURval))
-        else:
-            self.db.session.execute(update(tab).where(tab.code == 'EUR').
-                                    values(val=EURval))
-        self.db.session.commit()
-        res = self.db.session.execute(select(tab).where(tab.code == 'USD')).\
-            one_or_none()
-        if res is None:
-            self.db.session.execute(insert(tab).values(code='USD',
-                                    name='dolar amerykański', val=USDval))
-        else:
-            self.db.session.execute(update(tab).where(tab.code == 'USD').
-                                    values(val=USDval))
-        self.db.session.commit()
+        rates = self.obtain_data(False)
+        for rate in rates:
+            self.update_rate(rate)
         logging.info('Kursy walut zaktualizowane.')
         print('Kursy walut zaktualizowane.')
 
+    def update_rate(self, rate: dict) -> None:
+        """ method updating a singular rate in currency table.\n
+            Takes dicitionary with kes 'code', 'name' and 'rate' as input.
+        """
+        tab = self.db.base.classes.currency
+        res = self.db.session.execute(select(tab).where(
+            tab.code == rate['code'])).one_or_none()
+        if res is None:
+            self.db.session.execute(insert(tab).values(code=rate['code'],
+                                    name=rate['name'], val=rate['rate']))
+        else:
+            self.db.session.execute(update(tab).where(
+                tab.code == rate['code']).values(val=rate['rate']))
+        self.db.session.commit()
+
     @api_errors
-    def obtain_data(self, flag: bool) -> tuple[float, float]:
+    def obtain_data(self, flag: bool) -> list[dict]:
         """ Method for obtaining currency rates from NBP API.\n
             Takes bool as parameter to notify from which method was this one
-            called and returns tuple of floats (rates for USD and EUR).
+            called and returns list of dictionaries with currencies.
         """
+        to_get = ["eur", "usd"]
+        res = []
+        for currency in to_get:
+            res.append(self.get_currency_rate(currency))
+        print('Dane z NBP otrzymane.')
+        logging.info('Dane z NBP otrzymane.')
+        return res
 
-        # TODO this probably needs to be optimised, tests with 404 api needed
-        response = requests.get(self.Base + 'usd/today/?format=json')
-        if (response.status_code == 404):
-            response = requests.get(self.Base + 'usd/?format=json')
-            if response.status_code == 404:
+    def get_currency_rate(self, currency: String) -> dict:
+        """ Method for obtaining rate for particular currency.\n
+            Takes string represeting currency (for example "usd")
+            and returns data obtained for that curreny from NBP API
+            as dictionary.
+        """
+        response = requests.get(self.Base + currency + '/today/?format=json')
+        if response.status_code != 200:
+            response = requests.get(self.Base + currency + '/?format=json')
+            if response.status_code != 200:
                 raise ConnectionError
             print('usd -> Dzisiejsze dane niedostępne, używamy najświeższych '
                   'dostępnych danych.')
             logging.warning('usd -> Dzisiejsze dane niedostępne, używamy '
                             'najświeższych dostępnych danych.')
-            usd_val = response.json()['rates'][0]['mid']
-        else:
-            usd_val = response.json()['rates'][0]['mid']
-        response = requests.get(self.Base + 'eur/today/?format=json')
-        if (response.status_code == 404):
-            response = requests.get(self.Base + 'eur/?format=json')
-            if response.status_code == 404:
-                raise ConnectionError
-            print('eur -> Dzisiejsze dane niedostępne, używamy najświeższych '
-                  'dostępnych danych.')
-            logging.warning('eur -> Dzisiejsze dane niedostępne, używamy '
-                            'najświeższych dostępnych danych.')
-            eur_val = response.json()['rates'][0]['mid']
-        else:
-            eur_val = response.json()['rates'][0]['mid']
-        print('Dane z NBP otrzymane.')
-        logging.info('Dane z NBP otrzymane.')
-        return usd_val, eur_val
+        response = response.json()
+        return {'code': response['code'],
+                'name': response['currency'],
+                "rate": response['rates'][0]['mid']}
 
     def export(self):
         """ Export data from "product" table with added prices in USD and EUR
@@ -157,6 +157,8 @@ class Run:
         results = self.db.session.execute(select(prod)).all()
         # TODO look into write to .csv possibilites in python, maybe there is
         # cleaner solution
+        # this could be rewriten to some form of lazy load from database, if the
+        # ammount of information stored there will start causing memory issues
         with open('export.csv', 'w') as file:
             file.write('"ProductID";"DepartmentID";"Category";"IDSKU";'
                        '"ProductName";"Quantity";"UnitPrice";"UnitPriceUSD";'
