@@ -157,8 +157,9 @@ class Run:
         results = self.db.session.execute(select(prod)).all()
         # TODO look into write to .csv possibilites in python, maybe there is
         # cleaner solution
-        # this could be rewriten to some form of lazy load from database, if the
-        # ammount of information stored there will start causing memory issues
+        # this could be rewriten to some form of lazy load from database, if
+        # the ammount of information stored there will start causing memory
+        # issues
         with open('export.csv', 'w') as file:
             file.write('"ProductID";"DepartmentID";"Category";"IDSKU";'
                        '"ProductName";"Quantity";"UnitPrice";"UnitPriceUSD";'
